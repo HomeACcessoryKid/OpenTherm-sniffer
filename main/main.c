@@ -15,17 +15,55 @@
 
 // You must set VERSION=x.y.z of the lcm-demo code to match github version tag x.y.z via e.g. version.txt file
 
+#define GPIO_INPUT_IO_0     22
+#define GPIO_INPUT_IO_1     23
+#define GPIO_INPUT_PIN_SEL  ((1ULL<<GPIO_INPUT_IO_0) | (1ULL<<GPIO_INPUT_IO_1))
 
+#define ESP_INTR_FLAG_DEFAULT 0
+
+uint32_t count0=0, count22=0, count23=0;
+
+static void IRAM_ATTR gpio_isr_handler(void* arg)
+{
+    uint32_t gpio_num = (uint32_t) arg;
+    if (gpio_num==22) count22++;
+    else if (gpio_num==23) count23++;
+    else count0++;
+}
 
 void main_task(void *arg) {
     udplog_init(3);
         
-    gpio_dump_io_configuration(stdout, (1ULL << 22) | (1ULL << 23) );
+    //zero-initialize the config structure.
+    gpio_config_t io_conf = {};
+
+    //interrupt of rising edge
+    io_conf.intr_type = GPIO_INTR_ANYEDGE;
+    //bit mask of the pins
+    io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
+    //set as input mode
+    io_conf.mode = GPIO_MODE_INPUT;
+    //disable pull-up mode
+    io_conf.pull_up_en = 0;
+    //configure GPIO with the given settings
+    gpio_config(&io_conf);
+
+    //install gpio isr service
+    gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
+    //hook isr handler for specific gpio pin
+    gpio_isr_handler_add(GPIO_INPUT_IO_0, gpio_isr_handler, (void*) GPIO_INPUT_IO_0);
+    //hook isr handler for specific gpio pin
+    gpio_isr_handler_add(GPIO_INPUT_IO_1, gpio_isr_handler, (void*) GPIO_INPUT_IO_1);
+    
+    gpio_dump_io_configuration(stdout, GPIO_INPUT_PIN_SEL );
     
     while (true) {
-        UDPLUS("%d %d\n",gpio_get_level(22),gpio_get_level(23));
+        UDPLUS("%ld %ld %ld\n",count0,count22,count23);
+        count0=count22=count23=0;
         vTaskDelay(20);
     }
+    
+
 }    
 
 void app_main(void) {
@@ -39,6 +77,8 @@ void app_main(void) {
         err = nvs_flash_init(); //Retry nvs_flash_init
     } ESP_ERROR_CHECK( err );
 
+    //TODO: if no wifi setting found, trigger otamain
+    
     //block that gets you WIFI with the lowest amount of effort, and based on FLASH
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
