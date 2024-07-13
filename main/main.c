@@ -11,16 +11,20 @@
 // #include "lcm_api.h"
 #include <udplogger.h>
 
+#include "driver/gpio.h"
+
 // You must set VERSION=x.y.z of the lcm-demo code to match github version tag x.y.z via e.g. version.txt file
 
 
 
 void main_task(void *arg) {
     udplog_init(3);
+        
+    gpio_dump_io_configuration(stdout, (1ULL << 22) | (1ULL << 23) );
     
     while (true) {
-        printf("hi there\n");
-        vTaskDelay(100);
+        UDPLUS("%d %d\n",gpio_get_level(22),gpio_get_level(23));
+        vTaskDelay(20);
     }
 }    
 
@@ -50,6 +54,8 @@ void app_main(void) {
     //end of boilerplate code
 
     xTaskCreate(main_task,"main",4096,NULL,1,NULL);
-
-    printf("app_main-done\n");
+    while (true) {
+        vTaskDelay(1000); 
+    }
+    printf("app_main-done\n"); //will never exit here
 }
