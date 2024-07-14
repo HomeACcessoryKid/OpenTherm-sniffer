@@ -13,54 +13,76 @@
 
 #include "driver/gpio.h"
 
+#include "esp_timer.h"
+
 // You must set VERSION=x.y.z of the lcm-demo code to match github version tag x.y.z via e.g. version.txt file
 
+#define GPIO_OUTPUT_IO      21 //used to power transistors
+#define GPIO_OUTPUT_PIN_SEL (1ULL<<GPIO_OUTPUT_IO)
 #define GPIO_INPUT_IO_0     22
 #define GPIO_INPUT_IO_1     23
 #define GPIO_INPUT_PIN_SEL  ((1ULL<<GPIO_INPUT_IO_0) | (1ULL<<GPIO_INPUT_IO_1))
 
 #define ESP_INTR_FLAG_DEFAULT 0
 
-uint32_t count0=0, count22=0, count23=0;
+struct sample {
+    uint64_t time;
+    int     level;
+};
+
+static QueueHandle_t gpio_evt_queue;
 
 static void IRAM_ATTR gpio_isr_handler(void* arg)
 {
     uint32_t gpio_num = (uint32_t) arg;
-    if (gpio_num==22) count22++;
-    else if (gpio_num==23) count23++;
-    else count0++;
+    struct sample new;
+    switch (gpio_num) {
+        case GPIO_INPUT_IO_0: {
+            
+            break;}
+        case GPIO_INPUT_IO_1: {
+            new.time=esp_timer_get_time();
+            new.level=gpio_get_level(GPIO_INPUT_IO_1);
+            xQueueSendFromISR(gpio_evt_queue, &new, NULL);
+            break;}
+        default:
+            break;
+    }
 }
 
+uint64_t oldtime=0;
 void main_task(void *arg) {
     udplog_init(3);
+    gpio_evt_queue = xQueueCreate(1000, sizeof(struct sample));
         
-    //zero-initialize the config structure.
-    gpio_config_t io_conf = {};
+    gpio_config_t io_conf = {}; //zero-initialize the config structure.
 
-    //interrupt of rising edge
-    io_conf.intr_type = GPIO_INTR_ANYEDGE;
-    //bit mask of the pins
-    io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
-    //set as input mode
-    io_conf.mode = GPIO_MODE_INPUT;
-    //disable pull-up mode
+    io_conf.pin_bit_mask = GPIO_OUTPUT_PIN_SEL; //bit mask of the pins
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    io_conf.pull_down_en = 0;
     io_conf.pull_up_en = 0;
-    //configure GPIO with the given settings
-    gpio_config(&io_conf);
+    gpio_config(&io_conf); //configure GPIO with the given settings
+    gpio_set_level(GPIO_OUTPUT_IO, 1); //set it to 1 to provide 3V3
 
-    //install gpio isr service
-    gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
-    //hook isr handler for specific gpio pin
-    gpio_isr_handler_add(GPIO_INPUT_IO_0, gpio_isr_handler, (void*) GPIO_INPUT_IO_0);
-    //hook isr handler for specific gpio pin
-    gpio_isr_handler_add(GPIO_INPUT_IO_1, gpio_isr_handler, (void*) GPIO_INPUT_IO_1);
+    io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL; //bit mask of the pins
+    io_conf.intr_type = GPIO_INTR_ANYEDGE;
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pull_up_en = 1; //enable pull-up mode for open collector driving
+    gpio_config(&io_conf); //configure GPIO with the given settings
+
+   
+    gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT); //install gpio isr service
+//     gpio_isr_handler_add(GPIO_INPUT_IO_0, gpio_isr_handler, (void*) GPIO_INPUT_IO_0); //hook isr handler for specific gpio pin
+    gpio_isr_handler_add(GPIO_INPUT_IO_1, gpio_isr_handler, (void*) GPIO_INPUT_IO_1); //hook isr handler for specific gpio pin
     
-    gpio_dump_io_configuration(stdout, GPIO_INPUT_PIN_SEL );
+    gpio_dump_io_configuration(stdout, (GPIO_INPUT_PIN_SEL|GPIO_OUTPUT_PIN_SEL) );
     
     while (true) {
-        UDPLUS("%ld %ld %ld\n",count0,count22,count23);
-        count0=count22=count23=0;
-        vTaskDelay(20);
+        struct sample new;
+        xQueueReceive(gpio_evt_queue, &new, portMAX_DELAY);
+        UDPLUS("%d,%lld,%lld\n", new.level, new.time, new.time-oldtime);
+        oldtime=new.time;
     }
     
 

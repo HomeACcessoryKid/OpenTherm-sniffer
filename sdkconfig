@@ -48,6 +48,7 @@ CONFIG_SOC_RNG_SUPPORTED=y
 CONFIG_SOC_LIGHT_SLEEP_SUPPORTED=y
 CONFIG_SOC_DEEP_SLEEP_SUPPORTED=y
 CONFIG_SOC_LP_PERIPH_SHARE_INTERRUPT=y
+CONFIG_SOC_PM_SUPPORTED=y
 CONFIG_SOC_DPORT_WORKAROUND_DIS_INTERRUPT_LVL=5
 CONFIG_SOC_XTAL_SUPPORT_26M=y
 CONFIG_SOC_XTAL_SUPPORT_40M=y
@@ -409,6 +410,8 @@ CONFIG_COMPILER_STACK_CHECK_MODE_NONE=y
 # CONFIG_COMPILER_DUMP_RTL_FILES is not set
 CONFIG_COMPILER_RT_LIB_GCCLIB=y
 CONFIG_COMPILER_RT_LIB_NAME="gcc"
+# CONFIG_COMPILER_ORPHAN_SECTIONS_WARNING is not set
+CONFIG_COMPILER_ORPHAN_SECTIONS_PLACE=y
 # end of Compiler options
 
 #
@@ -472,6 +475,12 @@ CONFIG_ADC_CAL_LUT_ENABLE=y
 # end of Legacy ADC Driver Configuration
 
 #
+# Legacy DAC Driver Configurations
+#
+# CONFIG_DAC_SUPPRESS_DEPRECATE_WARN is not set
+# end of Legacy DAC Driver Configurations
+
+#
 # Legacy MCPWM Driver Configurations
 #
 # CONFIG_MCPWM_SUPPRESS_DEPRECATE_WARN is not set
@@ -488,6 +497,24 @@ CONFIG_ADC_CAL_LUT_ENABLE=y
 #
 # CONFIG_RMT_SUPPRESS_DEPRECATE_WARN is not set
 # end of Legacy RMT Driver Configurations
+
+#
+# Legacy I2S Driver Configurations
+#
+# CONFIG_I2S_SUPPRESS_DEPRECATE_WARN is not set
+# end of Legacy I2S Driver Configurations
+
+#
+# Legacy PCNT Driver Configurations
+#
+# CONFIG_PCNT_SUPPRESS_DEPRECATE_WARN is not set
+# end of Legacy PCNT Driver Configurations
+
+#
+# Legacy SDM Driver Configurations
+#
+# CONFIG_SDM_SUPPRESS_DEPRECATE_WARN is not set
+# end of Legacy SDM Driver Configurations
 # end of Driver Configurations
 
 #
@@ -549,7 +576,6 @@ CONFIG_ESP_ERR_TO_NAME_LOOKUP=y
 #
 # CONFIG_DAC_CTRL_FUNC_IN_IRAM is not set
 # CONFIG_DAC_ISR_IRAM_SAFE is not set
-# CONFIG_DAC_SUPPRESS_DEPRECATE_WARN is not set
 # CONFIG_DAC_ENABLE_DEBUG_LOG is not set
 CONFIG_DAC_DMA_AUTO_16BIT_ALIGN=y
 # end of ESP-Driver:DAC Configurations
@@ -581,7 +607,6 @@ CONFIG_GPTIMER_ISR_HANDLER_IN_IRAM=y
 # ESP-Driver:I2S Configurations
 #
 # CONFIG_I2S_ISR_IRAM_SAFE is not set
-# CONFIG_I2S_SUPPRESS_DEPRECATE_WARN is not set
 # CONFIG_I2S_ENABLE_DEBUG_LOG is not set
 # end of ESP-Driver:I2S Configurations
 
@@ -604,7 +629,6 @@ CONFIG_GPTIMER_ISR_HANDLER_IN_IRAM=y
 #
 # CONFIG_PCNT_CTRL_FUNC_IN_IRAM is not set
 # CONFIG_PCNT_ISR_IRAM_SAFE is not set
-# CONFIG_PCNT_SUPPRESS_DEPRECATE_WARN is not set
 # CONFIG_PCNT_ENABLE_DEBUG_LOG is not set
 # end of ESP-Driver:PCNT Configurations
 
@@ -620,7 +644,6 @@ CONFIG_GPTIMER_ISR_HANDLER_IN_IRAM=y
 # ESP-Driver:Sigma Delta Modulator Configurations
 #
 # CONFIG_SDM_CTRL_FUNC_IN_IRAM is not set
-# CONFIG_SDM_SUPPRESS_DEPRECATE_WARN is not set
 # CONFIG_SDM_ENABLE_DEBUG_LOG is not set
 # end of ESP-Driver:Sigma Delta Modulator Configurations
 
@@ -1007,7 +1030,7 @@ CONFIG_ESP_WIFI_SLP_DEFAULT_MIN_ACTIVE_TIME=50
 CONFIG_ESP_WIFI_SLP_DEFAULT_MAX_ACTIVE_TIME=10
 CONFIG_ESP_WIFI_SLP_DEFAULT_WAIT_BROADCAST_DATA_TIME=15
 CONFIG_ESP_WIFI_STA_DISCONNECTED_PM_ENABLE=y
-# CONFIG_ESP_WIFI_GMAC_SUPPORT is not set
+CONFIG_ESP_WIFI_GMAC_SUPPORT=y
 CONFIG_ESP_WIFI_SOFTAP_SUPPORT=y
 # CONFIG_ESP_WIFI_SLP_BEACON_LOST_OPT is not set
 CONFIG_ESP_WIFI_ESPNOW_MAX_ENCRYPT_NUM=7
@@ -1705,6 +1728,11 @@ CONFIG_WS_BUFFER_SIZE=1024
 # Ultra Low Power (ULP) Co-processor
 #
 # CONFIG_ULP_COPROC_ENABLED is not set
+
+#
+# ULP Debugging Options
+#
+# end of ULP Debugging Options
 # end of Ultra Low Power (ULP) Co-processor
 
 #
