@@ -25,35 +25,66 @@
 
 #define ESP_INTR_FLAG_DEFAULT 0
 
-struct sample {
-    uint64_t time;
-    int     level;
-};
-
 static QueueHandle_t gpio_evt_queue;
 
-static void IRAM_ATTR gpio_isr_handler(void* arg)
-{
+#define  READY 0
+#define  START 1
+#define  RECV  2
+int      resp_idx=0, rx_state=READY;
+uint32_t response=0;
+static void IRAM_ATTR gpio_isr_handler(void* arg) {
     uint32_t gpio_num = (uint32_t) arg;
-    struct sample new;
+    static uint64_t before=0;
+    uint64_t now,delta;
+    int even,inv_read;
     switch (gpio_num) {
         case GPIO_INPUT_IO_0: {
             
             break;}
         case GPIO_INPUT_IO_1: {
-            new.time=esp_timer_get_time();
-            new.level=gpio_get_level(GPIO_INPUT_IO_1);
-            xQueueSendFromISR(gpio_evt_queue, &new, NULL);
+            now=esp_timer_get_time(),delta=now-before;
+            even=0, inv_read=gpio_get_level(GPIO_INPUT_IO_1);//note that gpio_read gives the inverted value of the symbol
+            if (rx_state==READY) {
+                if (inv_read) return;
+                rx_state=START;
+                before=now;
+            } else if (rx_state==START) {
+                if (400<delta && delta<650 && inv_read) {
+                    resp_idx=0; response=0; even=0;
+                    rx_state=RECV;
+                } //else error state but might be a new start, so just stay in this state
+                before=now;
+            } else if (rx_state==RECV)  {
+                if (900<delta && delta<1150) {
+                    if (resp_idx<32) {
+                        response=(response<<1)|inv_read;
+                        if (inv_read) even++;
+                        resp_idx++;
+                        before=now;
+                    } else {
+                        if (even%2==0) {
+                            if (response&0x0f000000) resp_idx=-2; //signal issue reserved bits not zero
+                            else {
+                                response&=0x7fffffff; //mask parity bit
+                                xQueueSendToBackFromISR(gpio_evt_queue, (void*)&response, NULL);
+                            }
+                        } else resp_idx=-1; //signal issue parity failure
+                        rx_state=READY;
+                    }
+                } else if (delta>=1150) { //error state
+                    if (inv_read) rx_state=READY;
+                    else {rx_state=START; before=now;}
+                } //else do nothing so before+=500 and next transit is a databit
+            }
             break;}
         default:
             break;
     }
 }
 
-uint64_t oldtime=0;
 void main_task(void *arg) {
     udplog_init(3);
-    gpio_evt_queue = xQueueCreate(1000, sizeof(struct sample));
+    gpio_evt_queue = xQueueCreate(1000, sizeof(uint32_t));
         
     gpio_config_t io_conf = {}; //zero-initialize the config structure.
 
@@ -78,11 +109,14 @@ void main_task(void *arg) {
     
     gpio_dump_io_configuration(stdout, (GPIO_INPUT_PIN_SEL|GPIO_OUTPUT_PIN_SEL) );
     
+    uint32_t message;
     while (true) {
-        struct sample new;
-        xQueueReceive(gpio_evt_queue, &new, portMAX_DELAY);
-        UDPLUS("%d,%lld,%lld\n", new.level, new.time, new.time-oldtime);
-        oldtime=new.time;
+        if (xQueueReceive(gpio_evt_queue, &(message), (TickType_t)850/portTICK_PERIOD_MS) == pdTRUE) {
+            UDPLUS("RSP:%08lx\n",message);
+        } else {
+            UDPLUS("!!! NO_RSP: resp_idx=%d rx_state=%d response=%08lx\n",resp_idx, rx_state, response);
+            resp_idx=0, rx_state=READY, response=0;
+        }
     }
     
 
